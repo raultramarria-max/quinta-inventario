@@ -1,0 +1,709 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inventario Bodega - Quinta (Versión 2)</title>
+    <script src="https://unpkg.com/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: Arial, sans-serif;
+            background: #f5f5f5;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+        
+        .seccion {
+            margin-bottom: 30px;
+            padding: 20px;
+            background: #f9f9f9;
+            border-left: 4px solid #667eea;
+            border-radius: 4px;
+        }
+        
+        .seccion h2 {
+            color: #667eea;
+            font-size: 16px;
+            margin-bottom: 15px;
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: #333;
+            font-size: 14px;
+        }
+        
+        input[type="file"],
+        input[type="text"],
+        select {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+            font-family: Arial, sans-serif;
+        }
+        
+        input[type="file"]:focus,
+        input[type="text"]:focus,
+        select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 5px rgba(102, 126, 234, 0.3);
+        }
+        
+        button {
+            background: #667eea;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            transition: background 0.3s;
+        }
+        
+        button:hover {
+            background: #764ba2;
+        }
+        
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        
+        .info {
+            background: #e3f2fd;
+            color: #1565c0;
+            padding: 12px;
+            border-left: 4px solid #2196f3;
+            border-radius: 4px;
+            margin-top: 10px;
+            font-size: 13px;
+        }
+        
+        .success {
+            background: #e8f5e9;
+            color: #2e7d32;
+            padding: 12px;
+            border-left: 4px solid #4CAF50;
+            border-radius: 4px;
+            margin-top: 10px;
+            font-size: 13px;
+        }
+        
+        .error {
+            background: #ffebee;
+            color: #c62828;
+            padding: 12px;
+            border-left: 4px solid #f44336;
+            border-radius: 4px;
+            margin-top: 10px;
+            font-size: 13px;
+        }
+        
+        .articulo-item {
+            display: grid;
+            grid-template-columns: 1fr 2fr 1fr 1fr 1fr;
+            gap: 10px;
+            padding: 12px;
+            background: white;
+            border: 1px solid #eee;
+            border-radius: 4px;
+            margin-bottom: 10px;
+            align-items: center;
+        }
+        
+        .articulo-item input {
+            width: 100%;
+        }
+        
+        .articulo-label {
+            font-size: 12px;
+            color: #666;
+            font-weight: bold;
+        }
+        
+        .diferencia {
+            font-weight: bold;
+            text-align: right;
+        }
+        
+        .diferencia.positivo {
+            color: #4CAF50;
+        }
+        
+        .diferencia.negativo {
+            color: #f44336;
+        }
+        
+        .botones {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        
+        .botones button {
+            padding: 14px;
+        }
+        
+        .resumen {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .stat {
+            background: white;
+            padding: 15px;
+            border-radius: 4px;
+            border: 1px solid #eee;
+        }
+        
+        .stat-titulo {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 8px;
+        }
+        
+        .stat-valor {
+            font-size: 24px;
+            font-weight: bold;
+            color: #667eea;
+        }
+        
+        #articlesList {
+            max-height: 400px;
+            overflow-y: auto;
+            margin-bottom: 20px;
+        }
+        
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📦 Inventario de Bodega - Quinta (v2)</h1>
+        
+        <!-- SECCIÓN 1: CARGAR EXCEL -->
+        <div class="seccion" id="sec1">
+            <h2>1. Cargar archivo Excel</h2>
+            <div class="form-group">
+                <input type="file" id="excelFile" accept=".xlsx,.xls" onchange="cargarExcel()" />
+            </div>
+            <div id="statusExcel"></div>
+        </div>
+        
+        <!-- SECCIÓN 2: DATOS OPERARIO -->
+        <div class="seccion" id="sec2" class="hidden">
+            <h2>2. Información del operario</h2>
+            <div class="form-group">
+                <label>Nombre:</label>
+                <input type="text" id="nombreOperario" placeholder="Tu nombre" />
+            </div>
+            <div class="form-group">
+                <label>Bodega:</label>
+                <select id="bodegaSelect">
+                    <option value="">-- Seleccionar bodega --</option>
+                </select>
+            </div>
+            <button onclick="iniciarInventario()">Iniciar Inventario</button>
+            <div id="statusInicio"></div>
+        </div>
+        
+        <!-- SECCIÓN 3: INVENTARIO -->
+        <div class="seccion" id="sec3" class="hidden">
+            <h2>3. Realizar inventario</h2>
+            
+            <div class="resumen">
+                <div class="stat">
+                    <div class="stat-titulo">Operario</div>
+                    <div class="stat-valor" id="displayOperario">-</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-titulo">Bodega</div>
+                    <div class="stat-valor" id="displayBodega">-</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-titulo">Artículos</div>
+                    <div class="stat-valor" id="displayContados">0</div>
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label>Buscar artículo:</label>
+                <input type="text" id="buscar" placeholder="SKU o descripción" onkeyup="filtrarArticulos()" />
+                <button onclick="abrirModalNuevoArticulo()" style="width: auto; margin-top: 10px;">➕ Agregar artículo no encontrado</button>
+            </div>
+            
+            <div id="articlesList"></div>
+            
+            <div class="botones">
+                <button onclick="volver()">← Volver</button>
+                <button onclick="descargarReporte()">📥 Descargar Reporte</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: Nuevo Artículo -->
+    <div id="modalNuevo" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000; justify-content:center; align-items:center;">
+        <div style="background:white; padding:30px; border-radius:8px; width:90%; max-width:500px; box-shadow:0 5px 30px rgba(0,0,0,0.3);">
+            <h2 style="color:#667eea; margin-bottom:20px;">Agregar Artículo No Encontrado</h2>
+            
+            <div class="form-group">
+                <label>SKU (obligatorio):</label>
+                <input type="text" id="nuevoSKU" placeholder="Ej: 999999" />
+            </div>
+            
+            <div class="form-group">
+                <label>Descripción (obligatorio):</label>
+                <input type="text" id="nuevoDescripcion" placeholder="Ej: PRODUCTO NUEVO" />
+            </div>
+            
+            <div class="form-group">
+                <label>Cantidad encontrada:</label>
+                <input type="number" id="nuevoContado" placeholder="0" value="1" />
+            </div>
+            
+            <div class="form-group">
+                <label>Precio unitario (opcional):</label>
+                <input type="number" id="nuevoPrecio" placeholder="0" value="0" />
+            </div>
+            
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:20px;">
+                <button onclick="cerrarModalNuevo()" style="background:#999;">Cancelar</button>
+                <button onclick="guardarArticuloNuevo()" style="background:#4CAF50;">Guardar</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let articulosCargados = [];
+        let articulosFiltered = [];
+        let conteos = {};
+        let datosOperario = {};
+        let encabezados = {};
+        
+        // ========== CARGAR EXCEL ==========
+        function cargarExcel() {
+            const file = document.getElementById('excelFile').files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                try {
+                    const data = new Uint8Array(event.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    
+                    // Combinar TODAS las hojas
+                    let jsonCombinado = [];
+                    
+                    workbook.SheetNames.forEach(sheetName => {
+                        const worksheet = workbook.Sheets[sheetName];
+                        
+                        // Leer por rango para tener control total
+                        const range = XLSX.utils.decode_range(worksheet['!ref']);
+                        
+                        // Primera fila = encabezados
+                        const encabezadosRow = [];
+                        for (let C = range.s.c; C <= range.e.c; ++C) {
+                            const cellAddress = XLSX.utils.encode_col(C) + '1';
+                            const cell = worksheet[cellAddress];
+                            encabezadosRow.push(cell ? cell.v : null);
+                        }
+                        
+                        console.log(`Hoja "${sheetName}" - Encabezados:`, encabezadosRow);
+                        
+                        // Datos
+                        for (let R = range.s.r + 1; R <= range.e.r; ++R) {
+                            const row = {};
+                            for (let C = range.s.c; C <= range.e.c; ++C) {
+                                const cellAddress = XLSX.utils.encode_col(C) + (R + 1);
+                                const cell = worksheet[cellAddress];
+                                const header = encabezadosRow[C];
+                                row[header] = cell ? cell.v : null;
+                            }
+                            jsonCombinado.push(row);
+                        }
+                    });
+                    
+                    // Procesar artículos
+                    articulosCargados = jsonCombinado.map((row, idx) => {
+                        if (idx === 0) {
+                            console.log('PRIMERA FILA:', row);
+                        }
+                        
+                        return {
+                            sku: row['Número de artículo'],
+                            descripcion: row['Descripción del artículo'],
+                            bodega: row['Nombre de almacén'],
+                            stock: parseFloat(row['En stock']) || 0,
+                            precio: parseFloat(row['Precio promedio']) || 0  // Columna 6
+                        };
+                    }).filter(a => a.sku && a.descripcion);
+                    
+                    console.log('Total artículos:', articulosCargados.length);
+                    console.log('Primero:', articulosCargados[0]);
+                    
+                    // Detectar bodegas
+                    const bodegasSet = new Set(
+                        articulosCargados
+                            .map(a => a.bodega)
+                            .filter(b => {
+                                const upper = b.toUpperCase();
+                                return !upper.includes('CURICO') && !upper.includes('CURICÓ');
+                            })
+                    );
+                    
+                    const bodegas = Array.from(bodegasSet).sort();
+                    
+                    // Llenar selector
+                    const select = document.getElementById('bodegaSelect');
+                    select.innerHTML = '<option value="">-- Seleccionar bodega --</option>';
+                    bodegas.forEach(bodega => {
+                        const count = articulosCargados.filter(a => a.bodega === bodega).length;
+                        const option = document.createElement('option');
+                        option.value = bodega;
+                        option.textContent = `${bodega} (${count} artículos)`;
+                        select.appendChild(option);
+                    });
+                    
+                    // Verificar si precios se cargaron
+                    const articulosConPrecio = articulosCargados.filter(a => a.precio > 0).length;
+                    const statusMsg = articulosConPrecio === articulosCargados.length
+                        ? `✓ ${articulosCargados.length} artículos cargados (${articulosConPrecio} con precio)`
+                        : `⚠ ${articulosCargados.length} artículos cargados (solo ${articulosConPrecio} con precio)`;
+                    
+                    const statusClass = articulosConPrecio === articulosCargados.length ? 'success' : 'error';
+                    document.getElementById('statusExcel').innerHTML = 
+                        `<div class="${statusClass}">${statusMsg}</div>`;
+                    
+                    // Mostrar sección 2
+                    document.getElementById('sec2').classList.remove('hidden');
+                    
+                } catch (error) {
+                    console.error('Error:', error);
+                    document.getElementById('statusExcel').innerHTML = 
+                        `<div class="error">✗ Error: ${error.message}</div>`;
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+        
+        // ========== INICIAR INVENTARIO ==========
+        function iniciarInventario() {
+            const nombre = document.getElementById('nombreOperario').value.trim();
+            const bodega = document.getElementById('bodegaSelect').value;
+            
+            if (!nombre) {
+                document.getElementById('statusInicio').innerHTML = 
+                    `<div class="error">✗ Por favor ingresa tu nombre</div>`;
+                return;
+            }
+            
+            if (!bodega) {
+                document.getElementById('statusInicio').innerHTML = 
+                    `<div class="error">✗ Por favor selecciona una bodega</div>`;
+                return;
+            }
+            
+            // Filtrar artículos por bodega
+            articulosFiltered = articulosCargados.filter(a => a.bodega === bodega);
+            conteos = {};
+            articulosNuevos = {};
+            
+            // Guardar datos
+            datosOperario = {
+                nombre: nombre,
+                bodega: bodega,
+                fecha: new Date().toLocaleDateString('es-CL'),
+                hora: new Date().toLocaleTimeString('es-CL')
+            };
+            
+            // Actualizar pantalla
+            document.getElementById('displayOperario').textContent = nombre;
+            document.getElementById('displayBodega').textContent = bodega;
+            
+            // Mostrar artículos
+            renderizarArticulos();
+            
+            // Mostrar sección 3
+            document.getElementById('sec1').classList.add('hidden');
+            document.getElementById('sec2').classList.add('hidden');
+            document.getElementById('sec3').classList.remove('hidden');
+        }
+        
+        // ========== RENDERIZAR ARTÍCULOS ==========
+        function renderizarArticulos() {
+            const lista = document.getElementById('articlesList');
+            lista.innerHTML = '';
+            
+            articulosFiltered.forEach(articulo => {
+                const div = document.createElement('div');
+                div.className = 'articulo-item';
+                
+                const contado = conteos[articulo.sku] || '';
+                const diferencia = contado ? (contado - articulo.stock) : 0;
+                const difClass = diferencia > 0 ? 'positivo' : diferencia < 0 ? 'negativo' : '';
+                
+                const etiquetaNuevo = articulo.esNuevo ? '<span style="background:#FFC107; color:black; padding:2px 6px; border-radius:3px; font-size:11px; font-weight:bold;">NUEVO</span>' : '';
+                
+                div.innerHTML = `
+                    <div>
+                        <div class="articulo-label">SKU: ${articulo.sku} ${etiquetaNuevo}</div>
+                        <div class="articulo-label">${articulo.descripcion.substring(0, 30)}</div>
+                    </div>
+                    <div>
+                        <div class="articulo-label">Stock: ${articulo.stock} | Precio: $${articulo.precio.toLocaleString('es-CL')}</div>
+                    </div>
+                    <input type="number" placeholder="Contado" value="${contado}" 
+                           onchange="actualizarConteo('${articulo.sku}', this.value)" />
+                    <div class="diferencia ${difClass}">
+                        ${diferencia > 0 ? '+' : ''}${diferencia}
+                    </div>
+                    <div style="text-align: right;">
+                        ${contado ? `$${(diferencia * articulo.precio).toLocaleString('es-CL')}` : '-'}
+                    </div>
+                `;
+                
+                lista.appendChild(div);
+            });
+            
+            document.getElementById('displayContados').textContent = Object.keys(conteos).length;
+        }
+        
+        // ========== ACTUALIZAR CONTEO ==========
+        function actualizarConteo(sku, valor) {
+            if (valor === '' || valor === null) {
+                delete conteos[sku];
+            } else {
+                const num = parseFloat(valor);
+                if (!isNaN(num)) {
+                    conteos[sku] = num;
+                }
+            }
+            document.getElementById('displayContados').textContent = Object.keys(conteos).length;
+            renderizarArticulos();
+        }
+        
+        // ========== FILTRAR ARTÍCULOS ==========
+        function filtrarArticulos() {
+            const busca = document.getElementById('buscar').value.toLowerCase();
+            
+            const lista = document.getElementById('articlesList');
+            const items = lista.querySelectorAll('.articulo-item');
+            
+            items.forEach(item => {
+                const texto = item.textContent.toLowerCase();
+                item.style.display = texto.includes(busca) ? '' : 'none';
+            });
+        }
+        
+        // ========== DESCARGAR REPORTE ==========
+        function descargarReporte() {
+            if (Object.keys(conteos).length === 0) {
+                alert('No hay artículos contados');
+                return;
+            }
+            
+            const articulosReporte = articulosFiltered
+                .filter(a => conteos[a.sku])
+                .map(a => ({
+                    SKU: a.sku,
+                    Descripción: a.descripcion,
+                    'Stock Sistema': a.stock,
+                    Contado: conteos[a.sku],
+                    Diferencia: conteos[a.sku] - a.stock,
+                    'Precio Unitario': a.precio,
+                    'Valor Diferencia': (conteos[a.sku] - a.stock) * a.precio,
+                    'Tipo': a.esNuevo ? 'NUEVO (No en Excel)' : 'Sistema'
+                }));
+            
+            // Crear Excel
+            const wb = XLSX.utils.book_new();
+            
+            // Hoja 1: Resumen
+            const articulosNuevosCount = Object.keys(articulosNuevos).length;
+            const resumen = [
+                ['INVENTARIO - QUINTA'],
+                [''],
+                ['Operario:', datosOperario.nombre],
+                ['Bodega:', datosOperario.bodega],
+                ['Fecha:', datosOperario.fecha],
+                ['Hora:', datosOperario.hora],
+                [''],
+                ['Artículos contados:', Object.keys(conteos).length],
+                ['Con diferencia:', articulosReporte.filter(a => a.Diferencia !== 0).length],
+                ['Artículos nuevos (no en Excel):', articulosNuevosCount],
+                ['Valor total diferencia:', articulosReporte.reduce((s, a) => s + a['Valor Diferencia'], 0)]
+            ];
+            
+            const wsResumen = XLSX.utils.aoa_to_sheet(resumen);
+            wsResumen['!cols'] = [{ wch: 25 }, { wch: 25 }];
+            XLSX.utils.book_append_sheet(wb, wsResumen, 'Resumen');
+            
+            // Hoja 2: Detalle
+            const wsDetalle = XLSX.utils.json_to_sheet(articulosReporte);
+            wsDetalle['!cols'] = [
+                { wch: 12 },
+                { wch: 30 },
+                { wch: 15 },
+                { wch: 12 },
+                { wch: 15 },
+                { wch: 15 },
+                { wch: 18 },
+                { wch: 20 }
+            ];
+            XLSX.utils.book_append_sheet(wb, wsDetalle, 'Detalle');
+            
+            // Hoja 3: Artículos Nuevos (solo si hay)
+            if (articulosNuevosCount > 0) {
+                const articulosNuevosReporte = articulosReporte.filter(a => a.Tipo === 'NUEVO (No en Excel)');
+                const wsNuevos = XLSX.utils.json_to_sheet(articulosNuevosReporte);
+                wsNuevos['!cols'] = [
+                    { wch: 12 },
+                    { wch: 30 },
+                    { wch: 15 },
+                    { wch: 12 },
+                    { wch: 15 },
+                    { wch: 15 },
+                    { wch: 18 },
+                    { wch: 20 }
+                ];
+                XLSX.utils.book_append_sheet(wb, wsNuevos, 'Nuevos');
+            }
+            
+            // Descargar
+            const fecha = new Date();
+            const nombre = `Inv_${datosOperario.bodega}_${datosOperario.nombre}_${fecha.toISOString().slice(0,10)}.xlsx`;
+            XLSX.writeFile(wb, nombre);
+            
+            alert(`✓ Reporte descargado (${articulosNuevosCount} artículos nuevos registrados)`);
+        }
+        
+        // ========== VOLVER ==========
+        function volver() {
+            if (confirm('¿Descartar inventario actual?')) {
+                document.getElementById('sec1').classList.remove('hidden');
+                document.getElementById('sec2').classList.remove('hidden');
+                document.getElementById('sec3').classList.add('hidden');
+                document.getElementById('excelFile').value = '';
+                document.getElementById('nombreOperario').value = '';
+                document.getElementById('bodegaSelect').value = '';
+                document.getElementById('statusExcel').innerHTML = '';
+                conteos = {};
+                articulosCargados = [];
+                articulosFiltered = [];
+                articulosNuevos = {};
+            }
+        }
+        
+        // ========== ARTÍCULOS NUEVOS (NO EN EXCEL) ==========
+        let articulosNuevos = {};
+        
+        function abrirModalNuevoArticulo() {
+            const modal = document.getElementById('modalNuevo');
+            if (!modal) {
+                alert('Error: No se encontró el modal');
+                return;
+            }
+            modal.style.display = 'flex';
+            document.getElementById('nuevoSKU').focus();
+        }
+        
+        function cerrarModalNuevo() {
+            const modal = document.getElementById('modalNuevo');
+            if (modal) {
+                modal.style.display = 'none';
+            }
+            document.getElementById('nuevoSKU').value = '';
+            document.getElementById('nuevoDescripcion').value = '';
+            document.getElementById('nuevoContado').value = '1';
+            document.getElementById('nuevoPrecio').value = '0';
+        }
+        
+        function guardarArticuloNuevo() {
+            const sku = document.getElementById('nuevoSKU').value.trim();
+            const descripcion = document.getElementById('nuevoDescripcion').value.trim();
+            const contado = parseFloat(document.getElementById('nuevoContado').value) || 0;
+            const precio = parseFloat(document.getElementById('nuevoPrecio').value) || 0;
+            
+            // Validaciones
+            if (!sku) {
+                alert('Por favor ingresa un SKU');
+                return;
+            }
+            if (!descripcion) {
+                alert('Por favor ingresa una descripción');
+                return;
+            }
+            if (contado <= 0) {
+                alert('La cantidad debe ser mayor a 0');
+                return;
+            }
+            
+            // Verificar si el SKU ya existe
+            if (articulosCargados.find(a => a.sku === sku) || articulosNuevos[sku]) {
+                alert('Este SKU ya existe en el sistema o ya fue agregado');
+                return;
+            }
+            
+            // Guardar artículo nuevo
+            articulosNuevos[sku] = {
+                sku: sku,
+                descripcion: descripcion,
+                bodega: datosOperario.bodega,
+                stock: 0,  // No está en el sistema
+                precio: precio,
+                esNuevo: true
+            };
+            
+            // Registrar conteo
+            conteos[sku] = contado;
+            
+            // Agregar a lista de artículos filtrados
+            articulosFiltered.push(articulosNuevos[sku]);
+            
+            // Actualizar pantalla
+            renderizarArticulos();
+            document.getElementById('displayContados').textContent = Object.keys(conteos).length;
+            
+            // Cerrar modal
+            cerrarModalNuevo();
+            
+            alert(`✓ Artículo agregado: ${sku} - ${descripcion} (${contado} unidades)`);
+        }
+    </script>
+</body>
+</html>
