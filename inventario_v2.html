@@ -220,16 +220,18 @@
         <div class="seccion" id="sec1">
             <h2>1. Cargar archivo Excel</h2>
             
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px;">
-                <button onclick="descargarExcelGitHub()" style="background: #4CAF50; padding: 15px;">
-                    📥 Descargar desde GitHub
-                </button>
-                <button onclick="document.getElementById('excelFile').click()" style="background: #2196F3; padding: 15px;">
-                    📂 Cargar archivo local
-                </button>
-            </div>
+            <button onclick="document.getElementById('excelFile').click()" style="width: 100%; background: #667eea; padding: 15px; margin-bottom: 15px;">
+                📂 Cargar archivo local
+            </button>
             
             <input type="file" id="excelFile" accept=".xlsx,.xls" onchange="cargarExcel()" style="display:none;" />
+            
+            <div style="text-align: center; font-size: 12px; color: #666; margin-bottom: 15px;">
+                ¿Necesitas descargar el Excel actualizado?
+                <a href="https://github.com/raultramarria-max/quinta-inventario/raw/main/stock_de_bodega.xlsx" target="_blank" style="color: #667eea; text-decoration: underline;">
+                    Descargar desde GitHub
+                </a>
+            </div>
             
             <div id="statusExcel"></div>
         </div>
@@ -323,110 +325,6 @@
         let conteos = {};
         let datosOperario = {};
         let encabezados = {};
-        
-        // ========== DESCARGAR EXCEL DESDE GITHUB ==========
-        function descargarExcelGitHub() {
-            const statusDiv = document.getElementById('statusExcel');
-            statusDiv.innerHTML = '<div class="info">⏳ Descargando Excel desde GitHub...</div>';
-            
-            // URL del archivo en GitHub (raw content)
-            // Cambia "raul-munoz" por tu usuario real
-            const urlGitHub = 'https://raw.githubusercontent.com/raultramarria-max/quinta-inventario/main/stock_de_bodega.xlsx';
-            
-            fetch(urlGitHub)
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error(`HTTP error! status: ${response.status}`);
-                    }
-                    return response.arrayBuffer();
-                })
-                .then(data => {
-                    try {
-                        // Procesar Excel descargado
-                        const workbook = XLSX.read(data, { type: 'array' });
-                        
-                        // Combinar TODAS las hojas
-                        let jsonCombinado = [];
-                        workbook.SheetNames.forEach(sheetName => {
-                            const worksheet = workbook.Sheets[sheetName];
-                            const range = XLSX.utils.decode_range(worksheet['!ref']);
-                            
-                            // Encabezados
-                            const encabezadosRow = [];
-                            for (let C = range.s.c; C <= range.e.c; ++C) {
-                                const cellAddress = XLSX.utils.encode_col(C) + '1';
-                                const cell = worksheet[cellAddress];
-                                encabezadosRow.push(cell ? cell.v : null);
-                            }
-                            
-                            // Datos
-                            for (let R = range.s.r + 1; R <= range.e.r; ++R) {
-                                const row = {};
-                                for (let C = range.s.c; C <= range.e.c; ++C) {
-                                    const cellAddress = XLSX.utils.encode_col(C) + (R + 1);
-                                    const cell = worksheet[cellAddress];
-                                    const header = encabezadosRow[C];
-                                    row[header] = cell ? cell.v : null;
-                                }
-                                jsonCombinado.push(row);
-                            }
-                        });
-                        
-                        // Procesar artículos
-                        articulosCargados = jsonCombinado.map((row, idx) => {
-                            return {
-                                sku: row['Número de artículo'],
-                                descripcion: row['Descripción del artículo'],
-                                bodega: row['Nombre de almacén'],
-                                stock: parseFloat(row['En stock']) || 0,
-                                precio: parseFloat(row['Precio promedio']) || 0
-                            };
-                        }).filter(a => a.sku && a.descripcion);
-                        
-                        // Detectar bodegas
-                        const bodegasSet = new Set(
-                            articulosCargados
-                                .map(a => a.bodega)
-                                .filter(b => {
-                                    const upper = b.toUpperCase();
-                                    return !upper.includes('CURICO') && !upper.includes('CURICÓ');
-                                })
-                        );
-                        
-                        const bodegas = Array.from(bodegasSet).sort();
-                        
-                        // Llenar selector
-                        const select = document.getElementById('bodegaSelect');
-                        select.innerHTML = '<option value="">-- Seleccionar bodega --</option>';
-                        bodegas.forEach(bodega => {
-                            const count = articulosCargados.filter(a => a.bodega === bodega).length;
-                            const option = document.createElement('option');
-                            option.value = bodega;
-                            option.textContent = `${bodega} (${count} artículos)`;
-                            select.appendChild(option);
-                        });
-                        
-                        // Verificar si precios se cargaron
-                        const articulosConPrecio = articulosCargados.filter(a => a.precio > 0).length;
-                        const statusMsg = articulosConPrecio === articulosCargados.length
-                            ? `✓ ${articulosCargados.length} artículos cargados desde GitHub`
-                            : `⚠ ${articulosCargados.length} artículos cargados (solo ${articulosConPrecio} con precio)`;
-                        
-                        const statusClass = articulosConPrecio === articulosCargados.length ? 'success' : 'error';
-                        statusDiv.innerHTML = `<div class="${statusClass}">${statusMsg}</div>`;
-                        
-                        // Mostrar sección 2
-                        document.getElementById('sec2').classList.remove('hidden');
-                        
-                    } catch (error) {
-                        statusDiv.innerHTML = `<div class="error">✗ Error al procesar Excel: ${error.message}</div>`;
-                    }
-                })
-                .catch(error => {
-                    statusDiv.innerHTML = `<div class="error">✗ Error al descargar desde GitHub: ${error.message}<br><br>Verifica que:<br>1. Tu usuario es correcto en el código<br>2. El repositorio es "quinta-inventario"<br>3. El archivo "stock_de_bodega.xlsx" existe en GitHub<br><br>Usa "Cargar archivo local" como alternativa.</div>`;
-                    console.error('Error:', error);
-                });
-        }
         
         // ========== CARGAR EXCEL ==========
         function cargarExcel() {
